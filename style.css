@@ -16,17 +16,11 @@
   --radius-xl: 24px;
   --radius-lg: 18px;
   --radius-md: 14px;
-  --radius-sm: 10px;
   --font: "Taipei Sans TC Beta", "Taipei Sans TC", "台北黑體", "Taiwan Sans", "Noto Sans TC", sans-serif;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
@@ -38,12 +32,7 @@ body {
   line-height: 1.6;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+button, input, textarea, select { font: inherit; }
 
 .page-shell {
   max-width: 1600px;
@@ -167,13 +156,10 @@ select {
   padding: 11px 18px;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-.btn:hover {
-  transform: translateY(-1px);
-}
-
+.btn:hover { transform: translateY(-1px); }
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -192,9 +178,7 @@ select {
   border: 1px solid var(--line-strong);
 }
 
-.btn--large {
-  min-width: 140px;
-}
+.btn--large { min-width: 140px; }
 
 .note-box,
 .info-box {
@@ -242,7 +226,6 @@ select {
   border-color: var(--primary);
   background: linear-gradient(180deg, #eef5ff 0%, #ffffff 100%);
   color: var(--primary);
-  box-shadow: inset 0 0 0 1px rgba(0, 64, 151, 0.08);
 }
 
 .stage-node--passed {
@@ -298,7 +281,6 @@ select {
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   padding: 7px 12px;
   border-radius: 999px;
   background: var(--primary-soft);
@@ -332,6 +314,13 @@ select {
   font-size: 13px;
   font-weight: 800;
   margin-bottom: 4px;
+}
+
+.question-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 700;
 }
 
 .question-text {
@@ -379,9 +368,7 @@ select {
   font-weight: 700;
 }
 
-.empty-state {
-  color: var(--muted);
-}
+.empty-state { color: var(--muted); }
 
 .result-summary__score {
   font-size: 28px;
@@ -519,24 +506,9 @@ select {
 }
 
 @media (max-width: 768px) {
-  .page-shell {
-    padding: 16px;
-  }
-
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .topbar h1 {
-    font-size: 28px;
-  }
-
-  .welcome-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stage-map {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  .page-shell { padding: 16px; }
+  .topbar { flex-direction: column; align-items: flex-start; }
+  .topbar h1 { font-size: 28px; }
+  .welcome-grid { grid-template-columns: 1fr; }
+  .stage-map { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

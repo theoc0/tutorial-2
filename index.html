@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>中文闖關遊戲</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%2250%22 font-size=%2250%22>💌</text></svg>">
-  <link rel="stylesheet" href="style.css?v=20260528-final-2" />
+  <link rel="stylesheet" href="style.css?v=20260531-final-500q" />
 </head>
 <body>
   <div class="page-shell">
@@ -15,7 +15,7 @@
         <h1>教圖下學期考試版</h1>
       </div>
       <div class="topbar__meta">
-        <span class="pill">單一版本</span>
+        <span class="pill">四篇課文版</span>
         <span class="pill">50 關</span>
         <span class="pill">每關 30 題</span>
       </div>
@@ -29,24 +29,30 @@
           </div>
           <div class="card__body">
             <p class="hero-card__desc">
-              這是為教圖下學期考試版整理的單一版本練習網站。<br>
-              輸入角色名稱後開始作答，每關需達 <strong>70%</strong> 才可解鎖下一關。
+              本版本固定使用四篇課文：<br>
+              <strong>兵車行、靜虛村記、論四端、大同與小康</strong><br>
+              每關需達 <strong>70%</strong> 才可進入下一關。
             </p>
 
             <label class="field-label" for="playerName">角色名稱</label>
-            <input id="playerName" class="text-input" type="text" placeholder="例如：小文、阿晴、1號考生" maxlength="20" />
+            <input id="playerName" class="text-input" type="text" placeholder="例如：3A陳小文、阿晴" maxlength="30" />
 
             <div class="button-row">
               <button id="startBtn" class="btn btn--primary" type="button">開始本關</button>
               <button id="rerollBtn" class="btn btn--secondary" type="button">重抽題目</button>
             </div>
 
+            <div class="button-row">
+              <button id="loadSaveBtn" class="btn btn--secondary" type="button">讀取此角色進度</button>
+              <button id="resetSaveBtn" class="btn btn--secondary" type="button">重設此角色進度</button>
+            </div>
+
             <div class="note-box">
               <ul>
-                <li>固定使用：教圖下學期考試版</li>
-                <li>每關 30 題，選項固定 A / B / C / D</li>
+                <li>固定四篇課文理解與對讀</li>
+                <li>每次闖關 A / B / C / D 順序都會隨機</li>
                 <li>交卷後只顯示錯題解析</li>
-                <li>進度會自動儲存在本機</li>
+                <li>每個角色名稱各自保存進度</li>
               </ul>
             </div>
           </div>
@@ -70,8 +76,8 @@
           <div class="card__body">
             <div class="welcome-grid">
               <div class="welcome-item">
-                <div class="welcome-item__label">版本</div>
-                <div class="welcome-item__value">教圖下學期考試版</div>
+                <div class="welcome-item__label">課文範圍</div>
+                <div class="welcome-item__value">四篇固定課文</div>
               </div>
               <div class="welcome-item">
                 <div class="welcome-item__label">玩法</div>
@@ -82,18 +88,18 @@
                 <div class="welcome-item__value">答對率至少 70%</div>
               </div>
               <div class="welcome-item">
-                <div class="welcome-item__label">結果顯示</div>
-                <div class="welcome-item__value">只顯示錯題解析</div>
+                <div class="welcome-item__label">答案排列</div>
+                <div class="welcome-item__value">每次隨機</div>
               </div>
             </div>
 
             <div class="info-box">
-              <p>建議用法：</p>
+              <p>本版重點：</p>
               <ol>
-                <li>先輸入角色名稱。</li>
-                <li>按「開始本關」進入目前可挑戰的關卡。</li>
-                <li>完成後會自動捲到結果區，查看本關表現與錯題。</li>
-                <li>達標後可進下一關，未達標可重抽再挑戰。</li>
+                <li>集中考核四篇課文內容理解。</li>
+                <li>加入課文之間的對讀比較。</li>
+                <li>每位學生可用角色名稱獨立保存進度。</li>
+                <li>重新開啟網頁後可繼續闖關。</li>
               </ol>
             </div>
           </div>
@@ -103,7 +109,7 @@
           <div class="card__head">
             <div>
               <h2 id="quizTitle">尚未開始作答</h2>
-              <p class="subtext" id="quizSubtitle">請先在左側輸入角色名稱並開始本關。</p>
+              <p class="subtext" id="quizSubtitle">請先輸入角色名稱，再開始本關。</p>
             </div>
             <div class="quiz-badges">
               <span class="pill" id="currentStagePill">第 1 關</span>
@@ -113,7 +119,6 @@
 
           <div class="card__body">
             <form id="quizForm" class="quiz-form"></form>
-
             <div class="submit-row">
               <button id="submitBtn" class="btn btn--primary btn--large" type="button" disabled>交卷</button>
             </div>
@@ -167,7 +172,7 @@
 
             <div class="status-block">
               <div class="status-label">整體進度</div>
-              <div class="progress progress--stage">
+              <div class="progress">
                 <div id="stageProgressBar" class="progress__bar"></div>
               </div>
               <div id="stageProgressText" class="progress-text">1 / 50</div>
@@ -178,7 +183,7 @@
     </main>
   </div>
 
-  <script src="bank-jt-sem2.js?v=20260528-final-2"></script>
-  <script src="app.js?v=20260528-final-2"></script>
+  <script src="bank-jt-sem2.js?v=20260531-final-500q"></script>
+  <script src="app.js?v=20260531-final-500q"></script>
 </body>
 </html>

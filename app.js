@@ -4,7 +4,7 @@
   const TOTAL_STAGES = 50;
   const QUESTIONS_PER_STAGE = 30;
   const PASS_PERCENT = 70;
-  const STORAGE_KEY = "jt_sem2_single_game_progress_v2";
+  const STORAGE_PREFIX = "jt_sem2_multi_profile_progress_v3";
 
   const stageRanges = [
     { start: 1, end: 5, plan: { 1: 20, 2: 10 } },
@@ -26,6 +26,8 @@
     playerNamePreview: document.getElementById("playerNamePreview"),
     startBtn: document.getElementById("startBtn"),
     rerollBtn: document.getElementById("rerollBtn"),
+    loadSaveBtn: document.getElementById("loadSaveBtn"),
+    resetSaveBtn: document.getElementById("resetSaveBtn"),
     submitBtn: document.getElementById("submitBtn"),
 
     stageMap: document.getElementById("stageMap"),
@@ -60,28 +62,70 @@
     timerHandle: null
   };
 
-  function loadProgress() {
+  function getProfileKey(name) {
+    const safe = (name || "").trim();
+    return `${STORAGE_PREFIX}::${safe || "default"}`;
+  }
+
+  function loadProgressByName(name) {
+    const safe = (name || "").trim();
+    if (!safe) return false;
+
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
+      const raw = localStorage.getItem(getProfileKey(safe));
+      if (!raw) {
+        state.playerName = safe;
+        state.unlockedStage = 1;
+        state.currentStage = 1;
+        renderStageMap();
+        renderStatus();
+        return false;
+      }
       const saved = JSON.parse(raw);
-      state.playerName = saved.playerName || "";
+      state.playerName = safe;
       state.unlockedStage = Math.min(TOTAL_STAGES, Math.max(1, Number(saved.unlockedStage || 1)));
       state.currentStage = Math.min(state.unlockedStage, Math.max(1, Number(saved.currentStage || 1)));
+      renderStageMap();
+      renderStatus();
+      return true;
     } catch (err) {
       console.warn("讀取進度失敗", err);
+      return false;
     }
   }
 
   function saveProgress() {
+    const safe = (state.playerName || "").trim();
+    if (!safe) return;
     localStorage.setItem(
-      STORAGE_KEY,
+      getProfileKey(safe),
       JSON.stringify({
-        playerName: state.playerName,
+        playerName: safe,
         unlockedStage: state.unlockedStage,
         currentStage: state.currentStage
       })
     );
+  }
+
+  function resetProgressByName(name) {
+    const safe = (name || "").trim();
+    if (!safe) return;
+    localStorage.removeItem(getProfileKey(safe));
+    if (state.playerName === safe) {
+      state.unlockedStage = 1;
+      state.currentStage = 1;
+      state.stageQuestionSet = [];
+      stopTimer();
+      renderStageMap();
+      renderStatus();
+      el.quizForm.innerHTML = "";
+      el.quizTitle.textContent = "尚未開始作答";
+      el.quizSubtitle.textContent = "請先輸入角色名稱，再開始本關。";
+      el.resultSummary.className = "result-summary empty-state";
+      el.resultSummary.textContent = "尚未作答";
+      el.wrongList.innerHTML = "";
+      updateAnswerProgress();
+    }
   }
 
   function pad(n) {
@@ -125,9 +169,9 @@
   }
 
   function normalizeQuestion(q, idx) {
-    const options = Array.isArray(q.options) ? q.options.slice(0, 4) : [];
-    while (options.length < 4) {
-      options.push(`選項${String.fromCharCode(65 + options.length)}`);
+    const originalOptions = Array.isArray(q.options) ? q.options.slice(0, 4) : [];
+    while (originalOptions.length < 4) {
+      originalOptions.push(`選項${String.fromCharCode(65 + originalOptions.length)}`);
     }
 
     let answerIndex = 0;
@@ -137,17 +181,24 @@
       const t = q.answer.trim().toUpperCase();
       if (["A", "B", "C", "D"].includes(t)) {
         answerIndex = ["A", "B", "C", "D"].indexOf(t);
-      } else {
-        const found = options.findIndex(op => String(op).trim() === String(q.answer).trim());
-        answerIndex = found >= 0 ? found : 0;
       }
     }
 
+    const optionObjects = originalOptions.map((text, i) => ({
+      text,
+      isCorrect: i === answerIndex
+    }));
+
+    const shuffledOptions = shuffle(optionObjects);
+    const shuffledAnswer = shuffledOptions.findIndex(op => op.isCorrect);
+
     return {
       id: q.id || `jt-sem2-${idx + 1}`,
+      source: q.source || "綜合",
+      type: q.type || "單篇理解",
       question: q.question || `未命名題目 ${idx + 1}`,
-      options,
-      answer: Math.min(3, Math.max(0, Number(answerIndex || 0))),
+      options: shuffledOptions.map(op => op.text),
+      answer: shuffledAnswer,
       explanation: q.explanation || "本題未提供解析。",
       diff: Math.min(10, Math.max(1, Number(q.diff || 1)))
     };
@@ -178,9 +229,9 @@
       const tried = new Set();
 
       while (taken < count && tried.size < 20) {
-        const tryDiffs = radius === 0 ? [targetDiff] : [targetDiff - radius, targetDiff + radius];
+        const diffs = radius === 0 ? [targetDiff] : [targetDiff - radius, targetDiff + radius];
 
-        for (const d of tryDiffs) {
+        for (const d of diffs) {
           if (d < 1 || d > 10 || tried.has(d)) continue;
           tried.add(d);
 
@@ -262,7 +313,7 @@
   function renderQuiz() {
     el.quizForm.innerHTML = "";
     el.quizTitle.textContent = `教圖下學期考試版｜第 ${state.currentStage} 關`;
-    el.quizSubtitle.textContent = `本關共 ${QUESTIONS_PER_STAGE} 題，需達 70% 才能進入下一關。`;
+    el.quizSubtitle.textContent = `本關共 ${QUESTIONS_PER_STAGE} 題，固定四篇課文，選項順序每次隨機。`;
 
     state.stageQuestionSet.forEach((q, index) => {
       const card = document.createElement("section");
@@ -282,11 +333,10 @@
       card.innerHTML = `
         <div class="question-card__head">
           <div class="question-no">第 ${index + 1} 題</div>
+          <div class="question-meta">${escapeHTML(q.source)}｜${escapeHTML(q.type)}｜Lv.${q.diff}</div>
           <div class="question-text">${escapeHTML(q.question)}</div>
         </div>
-        <div class="options">
-          ${optionsHTML}
-        </div>
+        <div class="options">${optionsHTML}</div>
       `;
       el.quizForm.appendChild(card);
     });
@@ -298,23 +348,8 @@
     updateAnswerProgress();
   }
 
-  function buildResultSummary(correct, total, percent, passed) {
-    return `
-      <div class="result-summary__score">${correct} / ${total}（${percent}%）</div>
-      <div class="result-summary__meta">
-        <span>角色：${escapeHTML(state.playerName || "未設定")}</span>
-        <span>關卡：第 ${passed ? Math.max(1, state.currentStage - 1) : state.currentStage} 關</span>
-        <span>作答時間：${formatTime(state.timerSec)}</span>
-      </div>
-      <div class="${passed ? "result-summary__pass" : "result-summary__fail"}">
-        ${passed ? "已達過關門檻，可挑戰下一關。" : "未達 70%，請重抽題目後再試一次。"}
-      </div>
-    `;
-  }
-
   function renderWrongList(wrongs) {
     el.wrongList.innerHTML = "";
-
     if (!wrongs.length) {
       const ok = document.createElement("div");
       ok.className = "note-box";
@@ -334,7 +369,8 @@
           <div class="wrong-card__title">錯題 ${idx + 1}</div>
         </div>
         <div class="wrong-card__body">
-          <div><strong>題目：</strong>${escapeHTML(item.question)}</div>
+          <div><strong>出處：</strong>${escapeHTML(item.source)}｜${escapeHTML(item.type)}</div>
+          <div class="explain-row"><strong>題目：</strong>${escapeHTML(item.question)}</div>
           <div class="explain-row">
             <span class="answer-chip answer-chip--mine">你的答案：${myLetter}${item.userAnswer >= 0 ? `．${escapeHTML(item.options[item.userAnswer] || "")}` : ""}</span>
             <span class="answer-chip answer-chip--correct">正確答案：${correctLetter}．${escapeHTML(item.options[item.correctAnswer] || "")}</span>
@@ -351,11 +387,10 @@
     el.resultSummary.innerHTML = `
       bank-jt-sem2.js 載入失敗或格式不正確。<br>
       請確認：<br>
-      1. bank-jt-sem2.js 是否真的已上傳<br>
-      2. script 路徑是否正確<br>
-      3. 是否已加上版本號避免快取<br>
-      4. console 是否有 SyntaxError<br>
-      5. 檔案內是否有 <code>window.BANK_JT_SEM2</code>
+      1. 檔案已成功上傳<br>
+      2. 檔案內有 window.BANK_JT_SEM2<br>
+      3. questions 陣列存在<br>
+      4. 瀏覽器已清除快取或使用版本號
     `;
   }
 
@@ -366,15 +401,24 @@
     }
 
     const name = el.playerName.value.trim();
+    if (!name) {
+      alert("請先輸入角色名稱。");
+      el.playerName.focus();
+      return;
+    }
+
+    if (state.playerName !== name) {
+      loadProgressByName(name);
+    }
+
     state.playerName = name;
     saveProgress();
     renderStatus();
 
     state.stageQuestionSet = pickQuestionsForStage(state.currentStage);
-
     if (!state.stageQuestionSet.length) {
       el.resultSummary.classList.remove("empty-state");
-      el.resultSummary.textContent = "目前題庫沒有可用題目，請先確認 bank-jt-sem2.js 內容。";
+      el.resultSummary.textContent = "目前題庫沒有可用題目。";
       return;
     }
 
@@ -409,6 +453,8 @@
         correct += 1;
       } else {
         wrongs.push({
+          source: q.source,
+          type: q.type,
           question: q.question,
           options: q.options,
           userAnswer,
@@ -421,7 +467,6 @@
     const total = state.stageQuestionSet.length;
     const percent = Math.round((correct / total) * 100);
     const passed = percent >= PASS_PERCENT;
-
     const finishedStage = state.currentStage;
 
     if (passed && state.unlockedStage < TOTAL_STAGES && finishedStage === state.unlockedStage) {
@@ -440,7 +485,7 @@
     el.resultSummary.innerHTML = `
       <div class="result-summary__score">${correct} / ${total}（${percent}%）</div>
       <div class="result-summary__meta">
-        <span>角色：${escapeHTML(state.playerName || "未設定")}</span>
+        <span>角色：${escapeHTML(state.playerName)}</span>
         <span>關卡：第 ${finishedStage} 關</span>
         <span>作答時間：${formatTime(state.timerSec)}</span>
       </div>
@@ -454,15 +499,35 @@
   }
 
   function init() {
-    loadProgress();
     renderStageMap();
     renderStatus();
     updateAnswerProgress();
 
     el.playerName.addEventListener("input", () => {
-      state.playerName = el.playerName.value.trim();
-      el.playerNamePreview.textContent = state.playerName || "未設定";
-      saveProgress();
+      const name = el.playerName.value.trim();
+      el.playerNamePreview.textContent = name || "未設定";
+    });
+
+    el.loadSaveBtn.addEventListener("click", () => {
+      const name = el.playerName.value.trim();
+      if (!name) {
+        alert("請先輸入角色名稱。");
+        return;
+      }
+      const found = loadProgressByName(name);
+      alert(found ? "已讀取此角色進度。" : "此角色尚無存檔，已建立新進度。");
+    });
+
+    el.resetSaveBtn.addEventListener("click", () => {
+      const name = el.playerName.value.trim();
+      if (!name) {
+        alert("請先輸入角色名稱。");
+        return;
+      }
+      const ok = confirm(`確定要重設「${name}」的進度嗎？`);
+      if (!ok) return;
+      resetProgressByName(name);
+      alert("已重設此角色進度。");
     });
 
     el.startBtn.addEventListener("click", startCurrentStage);
